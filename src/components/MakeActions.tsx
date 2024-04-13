@@ -120,10 +120,10 @@ const MakeActions: React.FC<props> = ({
   }
 
     return(
-      <div>
+      <div className="styles.card">
           { bicoToken && stakingContract &&
             <div style={{ padding: '10px' }}>
-              <button onClick={async() => {
+              <button className="button-highlight" onClick={async() => {
                   const { data } = await bicoToken.populateTransaction.approve(
                     stakingContract?.address, // spender address
                     ethers.utils.parseUnits("500".toString(), 18)
@@ -139,7 +139,7 @@ const MakeActions: React.FC<props> = ({
           }
           { bicoToken && stakingContract &&
             <div style={{ padding: '10px' }}>
-              <button onClick={async() => {
+              <button className="button-highlight" onClick={async() => {
                   const { data } = await stakingContract.populateTransaction.stake(
                     address,
                     ethers.utils.parseUnits("500".toString(), 18)
@@ -155,7 +155,7 @@ const MakeActions: React.FC<props> = ({
           }
           { bicoToken && stakingContract &&
             <div style={{ padding: '10px' }}>
-              <button onClick={async() => {
+              <button className="button-highlight" onClick={async() => {
                   const rewardsEarned = await stakingContract.getTotalRewardsBalance(address);
                   const { data } = await stakingContract.populateTransaction.claimRewards(
                     address,

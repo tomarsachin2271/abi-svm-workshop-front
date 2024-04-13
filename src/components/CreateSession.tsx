@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import { BigNumber, ethers } from "ethers";
 import {
   BiconomySmartAccountV2,
   createSessionKeyManagerModule,
@@ -8,7 +8,13 @@ import {
 import MakeActions from "./MakeActions";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { APPROVE_BICO_SESSION_ID, CLAIM_REWARDS_SESSION_ID, getABISVMSessionKeyData, STAKE_BICO_SESSION_ID } from "@/utils/sessionKey";
+import {
+  APPROVE_BICO_SESSION_ID,
+  CLAIM_REWARDS_SESSION_ID,
+  getABISVMSessionKeyData,
+  STAKE_BICO_SESSION_ID,
+} from "@/utils/sessionKey";
+import { calculateGasFee, getCurrentBaseFee } from "@/utils/gasFeeUtils";
 
 interface props {
   smartAccount: BiconomySmartAccountV2;
@@ -59,7 +65,7 @@ const CreateSession: React.FC<props> = ({
         setIsSessionActive(false);
         return;
       }
-      if(isSessionKeyModuleEnabled === false) {
+      if (isSessionKeyModuleEnabled === false) {
         setIsSessionActive(false);
         return;
       }
@@ -69,21 +75,23 @@ const CreateSession: React.FC<props> = ({
           moduleAddress: DEFAULT_SESSION_KEY_MANAGER_MODULE,
           smartAccountAddress: address,
         });
-        const activeSessions = await sessionKeyManagerModule.sessionStorageClient.getAllSessionData({status: "ACTIVE"});
+        const activeSessions = await sessionKeyManagerModule.sessionStorageClient.getAllSessionData({
+          status: "ACTIVE",
+        });
         console.log("Active Sessions", activeSessions);
 
-        setSessionIDs(activeSessions.map(session => session.sessionID || ""));
+        setSessionIDs(activeSessions.map((session) => session.sessionID || ""));
         let approveBicoSession = false;
         let stakeBicoSession = false;
         let claimRewardsSession = false;
-        for(const session of activeSessions) {
-          if(session.sessionID === APPROVE_BICO_SESSION_ID) {
+        for (const session of activeSessions) {
+          if (session.sessionID === APPROVE_BICO_SESSION_ID) {
             approveBicoSession = true;
           }
-          if(session.sessionID === STAKE_BICO_SESSION_ID) {
+          if (session.sessionID === STAKE_BICO_SESSION_ID) {
             stakeBicoSession = true;
           }
-          if(session.sessionID === CLAIM_REWARDS_SESSION_ID) {
+          if (session.sessionID === CLAIM_REWARDS_SESSION_ID) {
             claimRewardsSession = true;
           }
         }
@@ -140,66 +148,78 @@ const CreateSession: React.FC<props> = ({
       let sessionKeyDatas = [];
 
       // // Operation 1: Approve token A to Staking Contract
-      const sessionKeyData1 = await getABISVMSessionKeyData(sessionKeyEOA, {
-        destContract: bicoToken?.address || "",
-        functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("approve(address,uint256)"), 0, 4), // approve function selector
-        valueLimit: ethers.utils.parseEther("0"), // value limit
-        // array of offsets, values, and conditions
-        rules: [
-          {
-            offset: 0,
-            condition: 0,
-            referenceValue: ethers.utils.hexZeroPad(stakingContract?.address || "", 32),
-          }, // equal
-          {
-            offset: 32,
-            condition: 1, // less than or equal;
-            referenceValue: ethers.utils.hexZeroPad("0x10F0CF064DD59200000", 32), // 0x10F0CF064DD59200000 = 5,000 * 10^18 tokens
-          },
-        ],
-      }, APPROVE_BICO_SESSION_ID);
+      const sessionKeyData1 = await getABISVMSessionKeyData(
+        sessionKeyEOA,
+        {
+          destContract: bicoToken?.address || "",
+          functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("approve(address,uint256)"), 0, 4), // approve function selector
+          valueLimit: ethers.utils.parseEther("0"), // value limit
+          // array of offsets, values, and conditions
+          rules: [
+            {
+              offset: 0,
+              condition: 0,
+              referenceValue: ethers.utils.hexZeroPad(stakingContract?.address || "", 32),
+            }, // equal
+            {
+              offset: 32,
+              condition: 1, // less than or equal;
+              referenceValue: ethers.utils.hexZeroPad("0x10F0CF064DD59200000", 32), // 0x10F0CF064DD59200000 = 5,000 * 10^18 tokens
+            },
+          ],
+        },
+        APPROVE_BICO_SESSION_ID
+      );
       sessionKeyDatas.push(sessionKeyData1);
 
       // Operation 2: Stake Bico Token
-      const sessionKeyData2 = await getABISVMSessionKeyData(sessionKeyEOA, {
-        destContract: stakingContract?.address || "",
-        functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("stake(address,uint256)"), 0, 4), // stake function selector
-        valueLimit: ethers.utils.parseEther("0"), // value limit
-        // array of offsets, values, and conditions
-        rules: [
-          {
-            offset: 0,
-            condition: 0,
-            referenceValue: ethers.utils.hexZeroPad(address || "", 32),
-          }, // equal
-          {
-            offset: 32,
-            condition: 1,
-            referenceValue: ethers.utils.hexZeroPad(ethers.utils.parseEther("5000").toHexString(), 32),
-          }, // Less than or equal
-        ],
-      }, STAKE_BICO_SESSION_ID);
+      const sessionKeyData2 = await getABISVMSessionKeyData(
+        sessionKeyEOA,
+        {
+          destContract: stakingContract?.address || "",
+          functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("stake(address,uint256)"), 0, 4), // stake function selector
+          valueLimit: ethers.utils.parseEther("0"), // value limit
+          // array of offsets, values, and conditions
+          rules: [
+            {
+              offset: 0,
+              condition: 0,
+              referenceValue: ethers.utils.hexZeroPad(address || "", 32),
+            }, // equal
+            {
+              offset: 32,
+              condition: 1,
+              referenceValue: ethers.utils.hexZeroPad(ethers.utils.parseEther("5000").toHexString(), 32),
+            }, // Less than or equal
+          ],
+        },
+        STAKE_BICO_SESSION_ID
+      );
       sessionKeyDatas.push(sessionKeyData2);
 
       // Operation 3: Claim Rewards
-      const sessionKeyData3 = await getABISVMSessionKeyData(sessionKeyEOA, {
-        destContract: stakingContract?.address || "",
-        functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("claimRewards(address,uint256)"), 0, 4), // claim function selector
-        valueLimit: ethers.utils.parseEther("0"), // value limit
-        // array of offsets, values, and conditions
-        rules: [
-          {
-            offset: 0,
-            condition: 0,
-            referenceValue: ethers.utils.hexZeroPad(address || "", 32),
-          }, // equal
-          {
-            offset: 32,
-            condition: 3,
-            referenceValue: ethers.utils.hexZeroPad(ethers.utils.parseEther("10").toHexString(), 32),
-          }, 
-        ],
-      }, CLAIM_REWARDS_SESSION_ID);
+      const sessionKeyData3 = await getABISVMSessionKeyData(
+        sessionKeyEOA,
+        {
+          destContract: stakingContract?.address || "",
+          functionSelector: ethers.utils.hexDataSlice(ethers.utils.id("claimRewards(address,uint256)"), 0, 4), // claim function selector
+          valueLimit: ethers.utils.parseEther("0"), // value limit
+          // array of offsets, values, and conditions
+          rules: [
+            {
+              offset: 0,
+              condition: 0,
+              referenceValue: ethers.utils.hexZeroPad(address || "", 32),
+            }, // equal
+            {
+              offset: 32,
+              condition: 3,
+              referenceValue: ethers.utils.hexZeroPad(ethers.utils.parseEther("10").toHexString(), 32),
+            },
+          ],
+        },
+        CLAIM_REWARDS_SESSION_ID
+      );
       sessionKeyDatas.push(sessionKeyData3);
 
       const sessionObjects = sessionKeyDatas.map((data) => {
@@ -209,7 +229,7 @@ const CreateSession: React.FC<props> = ({
           sessionValidationModule: abiSVMAddress as `0x${string}`,
           sessionPublicKey: sessionKeyEOA as `0x${string}`,
           sessionKeyData: data.sessionKeyData as `0x${string}`,
-          preferredSessionId: data.sessionId
+          preferredSessionId: data.sessionId,
         };
       });
       console.log("Session Objects Created ", sessionObjects);
@@ -241,40 +261,78 @@ const CreateSession: React.FC<props> = ({
 
       let partialUserOp = await smartAccount.buildUserOp(transactionArray);
 
-      const userOpResponse = await smartAccount.sendUserOp(partialUserOp);
-      //console.log(`userOp Hash: ${userOpResponse.userOpHash}`);
-      const transactionDetails = await userOpResponse.wait();
-      console.log("txHash", transactionDetails.receipt.transactionHash);
-      console.log("Sessions Enabled");
+      try {
+        console.log("Partial User Op", partialUserOp);
+        const userOpResponse = await smartAccount.sendUserOp(partialUserOp);
 
-      // Update session status in session storage
-      console.log(sessionTxData.sessionIDInfo);
-      for (const sessionID of sessionTxData.sessionIDInfo) {
-        const searchParam = {
-          sessionID: sessionID,
-        };
-        try {
-          console.log(`Updating status for session ${sessionID}`);
-          await sessionModule.updateSessionStatus(searchParam, "ACTIVE");
+        //console.log(`userOp Hash: ${userOpResponse.userOpHash}`);
+        const transactionDetails = await userOpResponse.wait();
+        console.log("txHash", transactionDetails.receipt.transactionHash);
+        console.log("Sessions Enabled");
 
-          let sessionData = await sessionModule.sessionStorageClient.getSessionData(searchParam);
-          console.log(`Updated status for session ${sessionID}. New Staus: ${sessionData.status}`)
-        } catch (error) {
-          console.error(`Failed to update status for session ${sessionID}:`, error);
+        // Update session status in session storage
+        console.log(sessionTxData.sessionIDInfo);
+        for (const sessionID of sessionTxData.sessionIDInfo) {
+          const searchParam = {
+            sessionID: sessionID,
+          };
+          try {
+            console.log(`Updating status for session ${sessionID}`);
+            await sessionModule.updateSessionStatus(searchParam, "ACTIVE");
+
+            let sessionData = await sessionModule.sessionStorageClient.getSessionData(searchParam);
+            console.log(`Updated status for session ${sessionID}. New Staus: ${sessionData.status}`);
+          } catch (error) {
+            console.error(`Failed to update status for session ${sessionID}:`, error);
+          }
+        }
+
+        setIsSessionActive(true);
+        toast.success(`Success! Sessions created succesfully`, {
+          position: "top-right",
+          autoClose: 6000,
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "dark",
+        });
+      } catch (err: any) {
+        // if error message contains AA21 didn't pay prefund then show this message
+        if (err.message.includes("AA21 didn't pay prefund")) {
+          let baseGasFee = await getCurrentBaseFee(provider);
+          let transactionFeeNeeded = await calculateGasFee(partialUserOp, baseGasFee);
+          // To be on safe side add 10% extra fee
+          const increaseFactor = BigNumber.from(110); // Represents 110%
+          const baseFactor = BigNumber.from(100); // Represents the base 100%
+          let bumpedUpFee = BigNumber.from(transactionFeeNeeded).mul(increaseFactor).div(baseFactor);
+          let feeToDisplay = ethers.utils.formatEther(bumpedUpFee);
+
+          console.log(`Transaction Fee Needed ${feeToDisplay} ETH`);
+          toast.error(`Error! Please fund your smart account with at least ${feeToDisplay} ETH to create sessions.`, {
+            position: "top-right",
+            autoClose: 6000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "dark",
+          });
+        } else {
+          toast.error(`Error! ${err.message}`, {
+            position: "top-right",
+            autoClose: 6000,
+            hideProgressBar: false,
+            closeOnClick: true,
+            pauseOnHover: true,
+            draggable: true,
+            progress: undefined,
+            theme: "dark",
+          });
         }
       }
-
-      setIsSessionActive(true);
-      toast.success(`Success! Sessions created succesfully`, {
-        position: "top-right",
-        autoClose: 6000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
-        progress: undefined,
-        theme: "dark",
-      });
     } catch (err: any) {
       console.error(err);
     }
@@ -296,12 +354,16 @@ const CreateSession: React.FC<props> = ({
       />
       <h2>Actions</h2>
       {isSessionKeyModuleEnabled && !isSessionActive ? (
-        <button onClick={() => createSession(false)}>Create Session</button>
+        <button onClick={() => createSession(false)} className="button-highlight">
+          Create Session
+        </button>
       ) : (
         <div></div>
       )}
       {!isSessionKeyModuleEnabled && !isSessionActive ? (
-        <button onClick={() => createSession(true)}>Enable Session Key Module and Create Session</button>
+        <button onClick={() => createSession(true)} className="button-highlight">
+          Enable Session Key Module and Create Session
+        </button>
       ) : (
         <div></div>
       )}

@@ -93,6 +93,12 @@
   }
 }
 
+@media (max-width: 320px) {
+  .balanceCard {
+    width: 100%; /* Full width on very small screens */
+  }
+}
+
 @media (prefers-reduced-motion: no-preference) {
   a:nth-of-type(2) .logo {
     animation: logo-spin infinite 20s linear;
@@ -137,11 +143,101 @@
 }
 
 .main {
-  text-align: center;
-  width: 100vw;
+  max-width: 1000px; /* Adjust based on your preference */
+  margin: 0 auto;
+  padding: 20px;
 }
 
-.connect {
-  background-color: #ff4e17;
+  .connect {
+    display: block;  /* Makes the button a block element */
+    margin: 20px auto 40px; /* Centers the button and adds bottom margin */
+    background-color: #ff4e17;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+
+.infoCard, .card {
+  background-color: #1a1a1a;
   color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px; /* Space between rows */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+}
+
+.infoCard {
+  min-width: 800px;
+  margin: 10px auto; /* Center card and add vertical spacing */
+  box-shadow: 0 4px 8px rgba(0,0,0,0.25); /* Subtle shadow for depth */
+  text-align: left; /* Align text to the left */
+  max-width: 600px; /* Maximum width of the card */
+}
+
+.infoTitle {
+  margin: 0 0 10px 0; /* Space after the title */
+  color: #ff4e17; /* Light blue color for the title to stand out */
+  font-size: 1.2rem; /* Size of the title */
+}
+
+.infoContent {
+  margin: 0; /* Remove default margin */
+  font-size: 1.1rem; /* Slightly larger font size for content */
+  font-family: 'Courier New', Courier, monospace; /* Monospaced font for displaying balance */
+}
+
+.cardsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  flex-direction: row;
+  justify-content: flex-start;
+  width: 100%;
+}
+
+.card {
+  /* flex-basis: calc(50% - 10px); Subtracting 10px to account for the space-between */
+  box-sizing: border-box;
+  margin: 5px; /* Space between cards */
+}
+
+.balanceCard {
+  width: 250px; /* Set fixed width */
+  background-color: #1a1a1a;
+  color: #fff;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px; /* Space between cards */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.25);
+  margin: 5px; /* Space between cards */
+}
+
+.dynamicCard {
+  flex-grow: 1; /* Takes up the remaining space */
+  min-width: 200px; /* Minimum width to ensure it doesn't get too small */
+}
+
+.refreshButton {
+  background-color: #ff4e17;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.refreshButton:hover {
+  background-color: #e85e12;
+}
+
+.actionContainer {
+  padding: 10px;
+  background-color: #1a1a1a; /* Consistent with other cards */
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.25);
+  margin-bottom: 20px; /* Consistent spacing between cards */
 }

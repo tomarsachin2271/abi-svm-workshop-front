@@ -29,6 +29,7 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  justify-content: center;
 }
 
 h1 {
@@ -43,10 +44,28 @@ button {
   font-size: 1em;
   font-weight: 500;
   font-family: inherit;
-  background-color: #1a1a1a;
+  background-color: #1a1a1a; /* Dark color may not stand out on a gray background */
   cursor: pointer;
-  transition: border-color 0.25s;
+  transition: all 0.25s ease; /* Using 'all' to include background-color and box-shadow transitions */
+  color: #fff; /* Ensuring text is white for better contrast on dark backgrounds */
 }
+
+.button-highlight {
+  background-color: #242424; 
+  color: #fff; /* White text for contrast */
+  /* border: 1px solid #ff4e17; Vibrant orange border */
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.25s, box-shadow 0.25s, border-color 0.25s; /* Smooth transitions for multiple properties */
+}
+
+.button-highlight:hover, .button-highlight:focus {
+  /* background-color: rgba(255, 78, 23, 0.1); Slight tint on hover/focus for feedback */
+  box-shadow: 0 0 1px 1px #ff4e17; /* Glowing effect on hover/focus */
+  border-color: #ff4e17; /* Maintain or enhance border color on hover/focus */
+}
+
 button:hover {
   border-color: #646cff;
 }
