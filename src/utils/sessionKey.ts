@@ -14,10 +14,20 @@ export interface Permission {
   rules: Rule[];
 }
 
+export type SessionReturnData = {
+  sessionKeyData: string;
+  sessionId?: string;
+};
+
+export const APPROVE_BICO_SESSION_ID = "APPROVE_BICO";
+export const STAKE_BICO_SESSION_ID = "STAKE_BICO";
+export const CLAIM_REWARDS_SESSION_ID = "CLAIM_REWARDS";
+
 export async function getABISVMSessionKeyData(
   sessionKey: string,
   permission: Permission,
-): Promise<string> {
+  sessionId?: string
+): Promise<SessionReturnData> {
   let sessionKeyData = hexConcat([
     sessionKey,
     permission.destContract,
@@ -34,5 +44,8 @@ export async function getABISVMSessionKeyData(
       permission.rules[i].referenceValue,
     ]);
   }
-  return sessionKeyData;
+  return {
+    sessionKeyData: sessionKeyData,
+    sessionId: sessionId
+  }
 }
