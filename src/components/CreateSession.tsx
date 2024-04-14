@@ -2,7 +2,9 @@ import React, { useEffect, useState } from "react";
 import { BigNumber, ethers } from "ethers";
 import {
   BiconomySmartAccountV2,
+  createBatchedSessionRouterModule,
   createSessionKeyManagerModule,
+  DEFAULT_BATCHED_SESSION_ROUTER_MODULE,
   DEFAULT_SESSION_KEY_MANAGER_MODULE,
 } from "@biconomy/account";
 import MakeActions from "./MakeActions";
@@ -37,6 +39,8 @@ const CreateSession: React.FC<props> = ({
 }) => {
   const [isSessionKeyModuleEnabled, setIsSessionKeyModuleEnabled] = useState<boolean>(false);
   const [isSessionActive, setIsSessionActive] = useState<boolean>(false);
+  // Check if Batched Session Router moudle is enabled
+  const [isBSREnabled, setIsBSREnabled] = useState(false);
   const [sessionIDs, setSessionIDs] = useState<string[]>([]);
 
   useEffect(() => {
@@ -49,15 +53,24 @@ const CreateSession: React.FC<props> = ({
         const isEnabled = await smartAccount.isModuleEnabled(DEFAULT_SESSION_KEY_MANAGER_MODULE);
         console.log("isSessionKeyModuleEnabled", isEnabled);
         setIsSessionKeyModuleEnabled(isEnabled);
-        return;
       } catch (err: any) {
         console.error(err);
         setIsSessionKeyModuleEnabled(false);
         return;
       }
+      try {
+        const isEnabled = await smartAccount.isModuleEnabled(DEFAULT_BATCHED_SESSION_ROUTER_MODULE)
+        console.log("isBatchedSessionRouterModuleEnabled", isEnabled);
+        setIsBSREnabled(isEnabled);
+        return;
+      } catch(err: any) {
+        console.error(err)
+        setIsBSREnabled(false);
+        return;
+      }
     };
     checkSessionModuleEnabled();
-  }, [isSessionKeyModuleEnabled, address, smartAccount, provider]);
+  }, [isSessionKeyModuleEnabled, isBSREnabled, address, smartAccount, provider]);
 
   useEffect(() => {
     let checkSessionActive = async () => {
@@ -65,7 +78,7 @@ const CreateSession: React.FC<props> = ({
         setIsSessionActive(false);
         return;
       }
-      if (isSessionKeyModuleEnabled === false) {
+      if (isSessionKeyModuleEnabled === false || isBSREnabled === false) {
         setIsSessionActive(false);
         return;
       }
@@ -109,7 +122,7 @@ const CreateSession: React.FC<props> = ({
       }
     };
     checkSessionActive();
-  }, [address, isSessionKeyModuleEnabled, provider, smartAccount]);
+  }, [address, isSessionKeyModuleEnabled, isBSREnabled,  provider, smartAccount]);
 
   const createSession = async (enableSessionKeyModule: boolean) => {
     const toastMessage = "Creating Sessions for " + address;
@@ -141,6 +154,13 @@ const CreateSession: React.FC<props> = ({
         smartAccountAddress: address,
       });
 
+      // generate batched session router module
+      const sessionRouterModule = await createBatchedSessionRouterModule({
+        moduleAddress: DEFAULT_BATCHED_SESSION_ROUTER_MODULE,
+        sessionKeyManagerModule: sessionModule,
+        smartAccountAddress: address,
+      });
+
       /**
        * Create Session Key Datas
        */
@@ -164,7 +184,7 @@ const CreateSession: React.FC<props> = ({
             {
               offset: 32,
               condition: 1, // less than or equal;
-              referenceValue: ethers.utils.hexZeroPad("0x10F0CF064DD59200000", 32), // 0x10F0CF064DD59200000 = 5,000 * 10^18 tokens
+              referenceValue: ethers.utils.hexZeroPad(ethers.utils.parseEther("5000").toHexString(), 32),
             },
           ],
         },
@@ -251,9 +271,17 @@ const CreateSession: React.FC<props> = ({
 
       const transactionArray = [];
 
-      if (enableSessionKeyModule) {
+      if (!isSessionKeyModuleEnabled) {
         // -----> enableModule session manager module
         const enableModuleTrx = await smartAccount.getEnableModuleData(DEFAULT_SESSION_KEY_MANAGER_MODULE);
+        transactionArray.push(enableModuleTrx);
+      }
+
+      if (!isBSREnabled) {
+        // -----> enableModule batched session router module
+        const enableModuleTrx = await smartAccount.getEnableModuleData(
+          DEFAULT_BATCHED_SESSION_ROUTER_MODULE
+        );
         transactionArray.push(enableModuleTrx);
       }
 
@@ -353,14 +381,14 @@ const CreateSession: React.FC<props> = ({
         theme="dark"
       />
       <h2>Actions</h2>
-      {isSessionKeyModuleEnabled && !isSessionActive ? (
+      {isSessionKeyModuleEnabled && isBSREnabled && !isSessionActive ? (
         <button onClick={() => createSession(false)} className="button-highlight">
           Create Session
         </button>
       ) : (
         <div></div>
       )}
-      {!isSessionKeyModuleEnabled && !isSessionActive ? (
+      {(!isSessionKeyModuleEnabled || !isBSREnabled) && !isSessionActive ? (
         <button onClick={() => createSession(true)} className="button-highlight">
           Enable Session Key Module and Create Session
         </button>

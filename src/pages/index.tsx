@@ -1,7 +1,8 @@
 import Head from "next/head";
 import styles from "@/styles/Home.module.css";
 import { useState, useEffect } from "react";
-import { BiconomySmartAccountV2, BiconomySmartAccountV2Config, createSmartAccountClient } from "@biconomy/account";
+import { BiconomySmartAccountV2, BiconomySmartAccountV2Config, createSmartAccountClient, DEFAULT_BATCHED_SESSION_ROUTER_MODULE
+ } from "@biconomy/account";
 import { Contract, ethers } from "ethers";
 import CreateSession from "@/components/CreateSession";
 import erc20Abi from "@/utils/erc20Abi.json";
@@ -101,6 +102,10 @@ export default function Home() {
       const smartAccount = await createSmartAccountClient(biconomySmartAccountConfig);
       setAddress(await smartAccount.getAccountAddress());
       setSmartAccount(smartAccount);
+
+      let enabledModule = await smartAccount.getAllModules();
+      console.log(enabledModule);
+      console.log(`Batched Session Router Module: ${DEFAULT_BATCHED_SESSION_ROUTER_MODULE}`);
 
       const bicoToken = new ethers.Contract("0x48d3E8EDd4cdD81E4B4eea678Ab167E1988B63F2", erc20Abi, provider);
       setBicoToken(bicoToken);
